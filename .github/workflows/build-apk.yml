@@ -19,9 +19,11 @@ jobs:
       - name: Bundle Excel library offline
         run: cp node_modules/xlsx/dist/xlsx.full.min.js www/xlsx.full.min.js
       - run: npx cap add android
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
       - name: Generate launcher icons
         run: |
-          SRC=$(ls icon.png assets/icon-only.png *.png 2>/dev/null | head -n1)
+          for f in icon.png icon-only.png assets/icon-only.png; do if [ -f "$f" ]; then SRC="$f"; break; fi; done
           echo "Using $SRC"
           RES=android/app/src/main/res
           convert "$SRC" -fuzz 6% -trim +repage -resize 1024x1024! \( +clone -alpha extract -fill black -colorize 100 -fill white -draw "roundrectangle 0,0 1023,1023 210,210" \) -alpha off -compose CopyOpacity -composite /tmp/round.png
