@@ -1,0 +1,8 @@
+{
+  "appId": "com.hetary.nabdalraf",
+  "appName": "نبض الرف",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
