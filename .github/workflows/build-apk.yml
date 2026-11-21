@@ -1,46 +1,43 @@
 name: Build APK
-
 on:
   push:
-    branches: [ "main", "master", "Hasan" ]
+    branches: ["**"]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
-    - name: Setup Java JDK
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Install dependencies
-      run: npm install
-
-    - name: Add Android Platform
-      run: npx cap add android
-
-    - name: Sync Capacitor
-      run: npx cap sync android
-
-    - name: Build Debug APK
-      run: |
-        cd android
-        chmod +x gradlew
-        ./gradlew assembleDebug
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: NabdAlRaf-Debug-APK
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm install
+      - name: Bundle Excel library offline
+        run: cp node_modules/xlsx/dist/xlsx.full.min.js www/xlsx.full.min.js
+      - run: npx cap add android
+      - name: Generate launcher icons
+        run: |
+          SRC=$(ls icon.png assets/icon-only.png *.png 2>/dev/null | head -n1)
+          echo "Using $SRC"
+          RES=android/app/src/main/res
+          convert "$SRC" -fuzz 6% -trim +repage -resize 1024x1024! \( +clone -alpha extract -fill black -colorize 100 -fill white -draw "roundrectangle 0,0 1023,1023 210,210" \) -alpha off -compose CopyOpacity -composite /tmp/round.png
+          for pair in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            d=${pair%%:*}; s=${pair##*:}
+            mkdir -p $RES/mipmap-$d
+            convert /tmp/round.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher.png
+            convert /tmp/round.png -resize ${s}x${s} $RES/mipmap-$d/ic_launcher_round.png
+          done
+          rm -rf $RES/mipmap-anydpi-v26
+      - run: npx cap sync android
+      - name: Set version
+        run: sed -i 's/versionCode 1/versionCode ${{ github.run_number }}/; s/versionName "1.0"/versionName "2.0.0"/' android/app/build.gradle
+      - name: Build debug APK
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NabdAlRaf-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
